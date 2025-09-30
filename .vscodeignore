@@ -1,0 +1,27 @@
+# Archivos fuente TypeScript (ya compilados en out/)
+src/**
+tsconfig.json
+
+# Archivos de desarrollo
+.gitignore
+.vscode/**
+.eslintrc.json
+
+# Archivos de documentación para desarrollo
+*.md
+!README.md
+
+# Node modules de desarrollo (mantener solo dependencias de runtime)
+node_modules/@types/**
+node_modules/typescript/**
+node_modules/@typescript-eslint/**
+node_modules/eslint/**
+
+# Archivos de pruebas
+test/**
+**/*.test.js
+**/*.spec.js
+
+# Otros archivos innecesarios
+.git/**
+*.vsix
