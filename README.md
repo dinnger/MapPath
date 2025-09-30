@@ -4,6 +4,8 @@
 
 MapPath es una extensión de Visual Studio Code que analiza y visualiza las dependencias de tu proyecto en un grafo interactivo, organizando los archivos por carpetas y mostrando las relaciones entre ellos.
 
+![Presentación](./media/image.png)
+
 ## 🚀 Características
 
 - **Análisis Multi-lenguaje**: Soporte para TypeScript, JavaScript, Python, C#, Java y más
@@ -53,6 +55,7 @@ MapPath es una extensión de Visual Studio Code que analiza y visualiza las depe
 |----------|-------------|-----------------|
 | TypeScript | `.ts`, `.tsx` | Imports, exports, interfaces, clases |
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` | Requires, imports, exports |
+| Vue.js | `.vue` | Imports, components |
 | Python | `.py`, `.pyw` | Imports, from imports, `__all__` |
 | C# | `.cs` | Using statements, clases públicas |
 | Java | `.java` | Import statements, clases públicas |

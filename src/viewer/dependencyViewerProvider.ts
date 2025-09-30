@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { ProjectStructure } from '../analyzer/types';
 
 export class DependencyViewerProvider {
@@ -100,6 +99,10 @@ export class DependencyViewerProvider {
                     <div class="legend-item">
                         <div class="legend-color javascript"></div>
                         <span>JavaScript</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color vue"></div>
+                        <span>Vue</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color python"></div>
