@@ -14,6 +14,7 @@ export interface ProjectStructure {
     files: FileNode[];
     dependencies: DependencyGraph;
     folders: FolderStructure;
+    languageColors: { [key: string]: string };
 }
 
 export interface DependencyGraph {

@@ -6,6 +6,14 @@ export class JavaAnalyzer implements LanguageAnalyzer {
         return ['java'];
     }
 
+    getLanguageName(): string {
+        return 'Java';
+    }
+
+    getColor(): string {
+        return '#ed8b00';
+    }
+
     async analyze(content: string, filePath: string): Promise<AnalysisResult> {
         const dependencies: string[] = [];
         const exports: string[] = [];

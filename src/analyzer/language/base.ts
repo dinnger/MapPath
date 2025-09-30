@@ -1,6 +1,8 @@
 export interface LanguageAnalyzer {
     analyze(content: string, filePath: string): Promise<AnalysisResult>;
     getSupportedExtensions(): string[];
+    getLanguageName(): string;
+    getColor(): string;
 }
 
 export interface AnalysisResult {

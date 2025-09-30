@@ -6,6 +6,14 @@ export class JavaScriptAnalyzer implements LanguageAnalyzer {
         return ['js', 'jsx', 'mjs', 'cjs'];
     }
 
+    getLanguageName(): string {
+        return 'JavaScript';
+    }
+
+    getColor(): string {
+        return '#f1c40f';
+    }
+
     async analyze(content: string, filePath: string): Promise<AnalysisResult> {
         const dependencies: string[] = [];
         const exports: string[] = [];

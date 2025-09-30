@@ -1,11 +1,12 @@
 {
   "name": "mappath",
-  "displayName": "MapPath",
+  "displayName": "MapPath - Analizador visual de dependencias",
   "description": "Analizador visual de dependencias y estructura de proyectos",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "engines": {
     "vscode": "^1.74.0"
   },
+   "icon": "/media/icon.png",
   "categories": [
     "Visualization",
     "Other"
@@ -47,10 +48,10 @@
   "publisher": "dinnger",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dinnger/mappath"
+    "url": "https://github.com/dinnger/MapPath"
   },
-  "homepage": "https://github.com/dinnger/mappath",
+  "homepage": "https://github.com/dinnger/MapPath",
   "bugs": {
-    "url": "https://github.com/dinnger/mappath/issues"
+    "url": "https://github.com/dinnger/MapPath/issues"
   }
 }

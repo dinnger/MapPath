@@ -6,6 +6,14 @@ export class CSharpAnalyzer implements LanguageAnalyzer {
         return ['cs'];
     }
 
+    getLanguageName(): string {
+        return 'C#';
+    }
+
+    getColor(): string {
+        return '#239120';
+    }
+
     async analyze(content: string, filePath: string): Promise<AnalysisResult> {
         const dependencies: string[] = [];
         const exports: string[] = [];

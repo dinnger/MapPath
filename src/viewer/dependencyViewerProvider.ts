@@ -48,6 +48,17 @@ export class DependencyViewerProvider {
                         <option value="all">Todos</option>
                     </select>
                 </div>
+                                    <div class="search-container">
+                        <input type="text" id="search-input" placeholder="Buscar por nombre o ruta..." class="search-input">
+                        <button id="clear-search" class="clear-search-btn">✕</button>
+                    </div>
+                    
+                    <div class="grouping-controls">
+                        <label class="grouping-toggle">
+                            <input type="checkbox" id="folder-grouping" />
+                            <span>Agrupar por carpetas</span>
+                        </label>
+                    </div>
                 <div class="control-group">
                     <button id="reset-zoom">Restablecer Zoom</button>
                     <button id="fit-graph">Centrar Grafo</button>

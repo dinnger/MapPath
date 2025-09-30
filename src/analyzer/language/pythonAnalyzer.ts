@@ -6,6 +6,14 @@ export class PythonAnalyzer implements LanguageAnalyzer {
         return ['py', 'pyw'];
     }
 
+    getLanguageName(): string {
+        return 'Python';
+    }
+
+    getColor(): string {
+        return '#3776ab';
+    }
+
     async analyze(content: string, filePath: string): Promise<AnalysisResult> {
         const dependencies: string[] = [];
         const exports: string[] = [];

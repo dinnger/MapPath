@@ -7,10 +7,12 @@ import { JavaScriptAnalyzer } from './language/javascriptAnalyzer';
 import { PythonAnalyzer } from './language/pythonAnalyzer';
 import { CSharpAnalyzer } from './language/csharpAnalyzer';
 import { JavaAnalyzer } from './language/javaAnalyzer';
+import { VueAnalyzer } from './language/vueAnalyzer';
 
 export class ProjectAnalyzer {
     private languageAnalyzers: Map<string, LanguageAnalyzer>;
     private gitignorePatterns: string[] = [];
+    private projectRoot: string = '';
 
     constructor() {
         this.languageAnalyzers = new Map();
@@ -21,11 +23,29 @@ export class ProjectAnalyzer {
         this.languageAnalyzers.set('py', new PythonAnalyzer());
         this.languageAnalyzers.set('cs', new CSharpAnalyzer());
         this.languageAnalyzers.set('java', new JavaAnalyzer());
+        this.languageAnalyzers.set('vue', new VueAnalyzer());
     }
 
     async analyzeProject(rootPath: string): Promise<ProjectStructure> {
-        // Load .gitignore patterns first
+        this.projectRoot = rootPath;
+        
+        // Load configuration files
         this.loadGitignore(rootPath);
+        
+        // Setup TypeScript analyzer with project configuration
+        const tsAnalyzer = this.languageAnalyzers.get('ts') as TypeScriptAnalyzer;
+        if (tsAnalyzer) {
+            tsAnalyzer.setProjectRoot(rootPath);
+        }
+        const tsxAnalyzer = this.languageAnalyzers.get('tsx') as TypeScriptAnalyzer;
+        if (tsxAnalyzer) {
+            tsxAnalyzer.setProjectRoot(rootPath);
+        }
+        // Setup Vue analyzer with project configuration
+        const vueAnalyzer = this.languageAnalyzers.get('vue') as any;
+        if (vueAnalyzer && vueAnalyzer.setProjectRoot) {
+            vueAnalyzer.setProjectRoot(rootPath);
+        }
         
         const files = await this.scanDirectory(rootPath);
         const processedFiles = await this.processFiles(files, rootPath);
@@ -36,7 +56,8 @@ export class ProjectAnalyzer {
             rootPath,
             files: processedFiles,
             dependencies,
-            folders
+            folders,
+            languageColors: this.getLanguageColors()
         };
     }
 
@@ -181,67 +202,199 @@ export class ProjectAnalyzer {
     private resolveDependencyPath(dependency: string, fromFile: string): string | null {
         const dir = path.dirname(fromFile);
         
-        // Ignore node modules and built-in modules
-        if (!dependency.startsWith('./') && !dependency.startsWith('../') && !dependency.includes('/')) {
-            if (dependency === 'path' || dependency === 'fs' || dependency === 'vscode') {
-                return null;
+        // Skip built-in modules
+        if (this.isBuiltInModule(dependency)) {
+            return null;
+        }
+        
+        // Debug logging for specific case
+        if (dependency.includes('embedding.service')) {
+            console.log(`[DEBUG] Resolving: "${dependency}" from "${fromFile}"`);
+            console.log(`[DEBUG] Base dir: "${dir}"`);
+        }
+        
+        // 1. Try TypeScript aliases first
+        const tsAnalyzer = this.languageAnalyzers.get('ts') as TypeScriptAnalyzer;
+        if (tsAnalyzer) {
+            const aliasResolved = tsAnalyzer.resolveAlias(dependency);
+            if (aliasResolved) {
+                const result = this.tryWithExtensionsAndIndex(aliasResolved);
+                if (dependency.includes('embedding.service')) {
+                    console.log(`[DEBUG] TS Alias resolved to: "${aliasResolved}", final: ${result}`);
+                }
+                if (result) return result;
+            }
+        }
+
+        // 2. Try Vue/Vite aliases
+        const vueAnalyzer = this.languageAnalyzers.get('vue') as any;
+        if (vueAnalyzer && vueAnalyzer.resolveAlias) {
+            const aliasResolved = vueAnalyzer.resolveAlias(dependency);
+            if (aliasResolved) {
+                const result = this.tryWithExtensionsAndIndex(aliasResolved);
+                if (dependency.includes('embedding.service')) {
+                    console.log(`[DEBUG] Vue Alias resolved to: "${aliasResolved}", final: ${result}`);
+                }
+                if (result) return result;
             }
         }
         
-        // Dependencias relativas
+        // 3. Handle relative paths (including complex ones like ../../shared)
         if (dependency.startsWith('./') || dependency.startsWith('../')) {
             const resolved = path.resolve(dir, dependency);
+            const result = this.tryWithExtensionsAndIndex(resolved);
+            if (dependency.includes('embedding.service')) {
+                console.log(`[DEBUG] Relative path resolved to: "${resolved}", final: ${result}`);
+            }
+            if (result) return result;
+        }
+        
+        // 4. Try same directory (files without ./ prefix)
+        if (!dependency.includes('/') && !dependency.includes('\\')) {
+            const sameDirPath = path.join(dir, dependency);
+            const result = this.tryWithExtensionsAndIndex(sameDirPath);
+            if (dependency.includes('embedding.service')) {
+                console.log(`[DEBUG] Same dir path: "${sameDirPath}", final: ${result}`);
+            }
+            if (result) return result;
+        }
+        
+        // 5. Try as subdirectory path from current directory
+        if (dependency.includes('/')) {
+            const resolved = path.resolve(dir, dependency);
+            const result = this.tryWithExtensionsAndIndex(resolved);
+            if (dependency.includes('embedding.service')) {
+                console.log(`[DEBUG] Subdir path resolved to: "${resolved}", final: ${result}`);
+            }
+            if (result) return result;
+        }
+        
+        // 6. Try from project root
+        const fromRoot = path.join(this.projectRoot, dependency);
+        const result = this.tryWithExtensionsAndIndex(fromRoot);
+        if (dependency.includes('embedding.service')) {
+            console.log(`[DEBUG] From root: "${fromRoot}", final: ${result}`);
+        }
+        
+        return result;
+    }
+
+    private isBuiltInModule(dependency: string): boolean {
+        const builtInModules = [
+            'path', 'fs', 'os', 'util', 'events', 'stream', 'buffer', 'crypto',
+            'http', 'https', 'url', 'querystring', 'zlib', 'readline',
+            'vscode', 'react', 'vue', 'angular', '@types'
+        ];
+        
+        // Check if it's a built-in Node.js module
+        if (builtInModules.includes(dependency)) {
+            return true;
+        }
+        
+        // Check if it starts with a built-in module (like @types/node)
+        if (builtInModules.some(mod => dependency.startsWith(mod + '/'))) {
+            return true;
+        }
+        
+        // Check if it's an npm package (doesn't start with . or / and is a simple name without path separators)
+        if (!dependency.startsWith('.') && !dependency.startsWith('/') && !dependency.startsWith('@')) {
+            // If it's just a simple name without slashes, it's likely an npm package
+            return !dependency.includes('/');
+        }
+        
+        // Allow @scoped packages that might be local (like our @shared aliases)
+        return false;
+    }
+
+
+
+    private tryWithExtensionsAndIndex(basePath: string): string | null {
+        // Check if basePath already has an extension
+        const currentExt = path.extname(basePath);
+        
+        if (currentExt) {
+            // If it has an extension, try compatible extensions
+            const compatibleExts = this.getCompatibleExtensions(currentExt);
+            const baseWithoutExt = basePath.slice(0, -currentExt.length);
             
-            // Intentar con diferentes extensiones
-            const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.cs', '.java'];
+            // First try the exact path (in case it exists as-is)
+            if (this.fileExists(basePath)) {
+                return basePath;
+            }
             
-            for (const ext of extensions) {
-                const withExt = resolved + ext;
+            // Then try compatible extensions
+            for (const ext of compatibleExts) {
+                const withExt = baseWithoutExt + ext;
                 if (this.fileExists(withExt)) {
                     return withExt;
                 }
             }
+        } else {
+            // No extension provided, try all supported extensions
+            const allExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.cs', '.java', '.vue'];
             
-            // Intentar con index
-            for (const ext of extensions) {
-                const indexPath = path.join(resolved, 'index' + ext);
+            for (const ext of allExtensions) {
+                const withExt = basePath + ext;
+                if (this.fileExists(withExt)) {
+                    return withExt;
+                }
+            }
+        }
+        
+        // Check if basePath is a directory and try index files
+        if (this.directoryExists(basePath)) {
+            const indexExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.cs', '.java', '.vue'];
+            for (const ext of indexExtensions) {
+                const indexPath = path.join(basePath, 'index' + ext);
                 if (this.fileExists(indexPath)) {
                     return indexPath;
                 }
             }
         }
         
-        // Dependencias que pueden ser archivos en el mismo directorio (sin ./ prefix)
-        if (!dependency.includes('/') && !dependency.includes('\\')) {
-            const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.cs', '.java'];
-            
-            for (const ext of extensions) {
-                const sameDirPath = path.join(dir, dependency + ext);
-                if (this.fileExists(sameDirPath)) {
-                    return sameDirPath;
-                }
-            }
-        }
-        
-        // Buscar en subdirectorios del directorio actual
-        if (dependency.includes('/')) {
-            const resolved = path.resolve(dir, dependency);
-            const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.cs', '.java'];
-            
-            for (const ext of extensions) {
-                const withExt = resolved + ext;
-                if (this.fileExists(withExt)) {
-                    return withExt;
-                }
+        // Try with index files even if directory doesn't exist (in case of symlinks or special cases)
+        const indexExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.cs', '.java', '.vue'];
+        for (const ext of indexExtensions) {
+            const indexPath = path.join(basePath, 'index' + ext);
+            if (this.fileExists(indexPath)) {
+                return indexPath;
             }
         }
         
         return null;
     }
 
+    // Keep the old method for backward compatibility
+    private tryWithExtensions(basePath: string): string | null {
+        return this.tryWithExtensionsAndIndex(basePath);
+    }
+
+    private getCompatibleExtensions(originalExt: string): string[] {
+        const compatibilityMap: { [key: string]: string[] } = {
+            '.js': ['.ts', '.tsx', '.js', '.jsx'],
+            '.jsx': ['.tsx', '.jsx', '.ts', '.js'],
+            '.ts': ['.ts', '.tsx', '.js', '.jsx'],
+            '.tsx': ['.tsx', '.ts', '.jsx', '.js'],
+            '.py': ['.py'],
+            '.cs': ['.cs'],
+            '.java': ['.java'],
+            '.vue': ['.vue']
+        };
+        
+        return compatibilityMap[originalExt] || [originalExt];
+    }
+
     private fileExists(filePath: string): boolean {
         try {
-            return fs.existsSync(filePath);
+            return fs.existsSync(filePath) && fs.statSync(filePath).isFile();
+        } catch {
+            return false;
+        }
+    }
+
+    private directoryExists(dirPath: string): boolean {
+        try {
+            return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
         } catch {
             return false;
         }
@@ -266,16 +419,24 @@ export class ProjectAnalyzer {
     }
 
     private getLanguageFromExtension(ext: string): string {
-        const langMap: { [key: string]: string } = {
-            'ts': 'TypeScript',
-            'tsx': 'TypeScript React',
-            'js': 'JavaScript',
-            'jsx': 'JavaScript React',
-            'py': 'Python',
-            'cs': 'C#',
-            'java': 'Java'
+        const analyzer = this.languageAnalyzers.get(ext);
+        if (analyzer) {
+            return analyzer.getLanguageName();
+        }
+        return ext.toUpperCase();
+    }
+
+    getLanguageColors(): { [key: string]: string } {
+        const colors: { [key: string]: string } = {
+            'default': '#6c757d'
         };
-        return langMap[ext] || ext.toUpperCase();
+        
+        for (const [ext, analyzer] of this.languageAnalyzers.entries()) {
+            const languageName = analyzer.getLanguageName();
+            colors[languageName] = analyzer.getColor();
+        }
+        
+        return colors;
     }
 
     private loadGitignore(rootPath: string): void {
@@ -315,6 +476,8 @@ export class ProjectAnalyzer {
             '\\.d\\.ts$'
         );
     }
+
+
 
     private isIgnored(filePath: string, rootPath: string): boolean {
         const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
