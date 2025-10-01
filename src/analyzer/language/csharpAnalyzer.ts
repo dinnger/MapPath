@@ -25,6 +25,9 @@ export class CSharpAnalyzer implements LanguageAnalyzer {
         this.analyzeUsings(content, dependencies, imports);
         this.analyzeDeclarations(content, functions, classes, variables);
         this.analyzeExports(content, exports, functions, classes);
+        
+        // Extraer el namespace del archivo
+        const namespace = this.extractNamespace(content);
 
         return {
             dependencies,
@@ -32,7 +35,8 @@ export class CSharpAnalyzer implements LanguageAnalyzer {
             imports,
             functions,
             classes,
-            variables
+            variables,
+            namespace
         };
     }
 
@@ -53,6 +57,27 @@ export class CSharpAnalyzer implements LanguageAnalyzer {
                 isRelative: false // C# uses absolute namespaces
             });
         }
+    }
+
+    private extractNamespace(content: string): string | undefined {
+        // Buscar declaración de namespace
+        // Soporta tanto el formato antiguo como el nuevo file-scoped namespace
+        
+        // File-scoped namespace: namespace MyNamespace;
+        const fileScopedPattern = /^\s*namespace\s+([\w.]+)\s*;/m;
+        const fileScopedMatch = fileScopedPattern.exec(content);
+        if (fileScopedMatch) {
+            return fileScopedMatch[1];
+        }
+        
+        // Traditional namespace: namespace MyNamespace { ... }
+        const traditionalPattern = /namespace\s+([\w.]+)\s*\{/;
+        const traditionalMatch = traditionalPattern.exec(content);
+        if (traditionalMatch) {
+            return traditionalMatch[1];
+        }
+        
+        return undefined;
     }
 
     private analyzeDeclarations(content: string, functions: string[], classes: string[], variables: string[]): void {

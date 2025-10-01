@@ -25,6 +25,9 @@ export class JavaAnalyzer implements LanguageAnalyzer {
         this.analyzeImports(content, dependencies, imports);
         this.analyzeDeclarations(content, functions, classes, variables);
         this.analyzeExports(content, exports, functions, classes);
+        
+        // Extraer el package del archivo
+        const namespace = this.extractPackage(content);
 
         return {
             dependencies,
@@ -32,7 +35,8 @@ export class JavaAnalyzer implements LanguageAnalyzer {
             imports,
             functions,
             classes,
-            variables
+            variables,
+            namespace
         };
     }
 
@@ -53,6 +57,16 @@ export class JavaAnalyzer implements LanguageAnalyzer {
                 isRelative: false // Java uses absolute package names
             });
         }
+    }
+
+    private extractPackage(content: string): string | undefined {
+        // Buscar declaración de package
+        const packagePattern = /package\s+([\w.]+)\s*;/;
+        const match = packagePattern.exec(content);
+        if (match) {
+            return match[1];
+        }
+        return undefined;
     }
 
     private analyzeDeclarations(content: string, functions: string[], classes: string[], variables: string[]): void {

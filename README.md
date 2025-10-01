@@ -53,12 +53,29 @@ MapPath es una extensión de Visual Studio Code que analiza y visualiza las depe
 
 | Lenguaje | Extensiones | Características |
 |----------|-------------|-----------------|
-| TypeScript | `.ts`, `.tsx` | Imports, exports, interfaces, clases |
+| TypeScript | `.ts`, `.tsx` | Imports, exports, interfaces, clases, path aliases |
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` | Requires, imports, exports |
-| Vue.js | `.vue` | Imports, components |
+| Vue.js | `.vue` | Imports, components, Vite aliases |
 | Python | `.py`, `.pyw` | Imports, from imports, `__all__` |
-| C# | `.cs` | Using statements, clases públicas |
-| Java | `.java` | Import statements, clases públicas |
+| C# | `.cs` | **Namespaces**, using statements, clases públicas |
+| Java | `.java` | **Packages**, import statements, clases públicas |
+
+### Resolución de Dependencias por Lenguaje
+
+**TypeScript/JavaScript/Vue:**
+- Rutas relativas (`./`, `../`)
+- Path aliases de `tsconfig.json`
+- Vite aliases
+- Resolución desde project root
+
+**C# y Java:**
+- **Resolución basada en namespaces/packages**: Los archivos se conectan mediante sus declaraciones de namespace/package
+- Filtra automáticamente namespaces del sistema (`System`, `Microsoft`, `java`, `javax`, etc.)
+- Soporta tanto namespaces tradicionales como file-scoped en C#
+
+**Python:**
+- Imports absolutos y relativos
+- Detección de módulos builtin
 
 ## ⚙️ Configuración
 
@@ -66,6 +83,32 @@ La extensión funciona inmediatamente sin configuración adicional. Automáticam
 - Excluye directorios comunes como `node_modules`, `.git`, `dist`
 - Detecta el lenguaje de programación por extensión de archivo
 - Analiza solo archivos soportados
+- Respeta los patrones de `.gitignore` si existe
+
+### Cómo Funciona la Resolución de Dependencias
+
+MapPath utiliza estrategias específicas para cada lenguaje:
+
+**Para lenguajes basados en archivos (TypeScript/JavaScript/Python/Vue):**
+1. Intenta path aliases (ej: `@/components` → `src/components`)
+2. Resuelve rutas relativas (`./`, `../`)
+3. Busca en el directorio actual
+4. Busca desde el project root
+
+**Para lenguajes basados en namespaces (C#/Java):**
+1. Extrae el namespace/package de cada archivo
+2. Construye un mapa namespace → archivo
+3. Resuelve dependencias buscando el namespace en el mapa
+4. Filtra automáticamente librerías del sistema
+
+**Ejemplo con C#:**
+```csharp
+// OrderSnapshot.cs
+namespace Application.Snapshots.Order { ... }
+
+// OrderReadService.cs
+using Application.Snapshots.Order;  // ✅ Se conecta con OrderSnapshot.cs
+```
 
 ## 🤝 Contribución
 
@@ -85,9 +128,16 @@ La extensión funciona inmediatamente sin configuración adicional. Automáticam
 
 - Los imports dinámicos pueden no ser detectados completamente
 - Archivos muy grandes (>1MB) pueden ralentizar el análisis
-- Dependencias circulares se muestran pero no se resaltan especialmente
+- Las dependencias circulares se muestran pero no se resaltan especialmente
 
 ## 📝 Cambios Recientes
+
+### v2.7 (Próximo)
+- 🔧 **Corrección importante**: Resolución de dependencias basada en namespaces para C#
+- 🔧 **Corrección importante**: Resolución de dependencias basada en packages para Java
+- ✅ Ahora los archivos C# y Java muestran correctamente sus conexiones en el grafo
+- ✅ Soporte para namespaces file-scoped de C# 10+
+- ✅ Detección mejorada de módulos del sistema para evitar falsos positivos
 
 ### v1.0.0
 - ✅ Lanzamiento inicial

@@ -12,6 +12,7 @@ export interface AnalysisResult {
     functions: string[];
     classes: string[];
     variables: string[];
+    namespace?: string; // Para C# y Java
 }
 
 export interface ImportInfo {

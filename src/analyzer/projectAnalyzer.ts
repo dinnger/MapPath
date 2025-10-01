@@ -13,6 +13,7 @@ export class ProjectAnalyzer {
     private languageAnalyzers: Map<string, LanguageAnalyzer>;
     private gitignorePatterns: string[] = [];
     private projectRoot: string = '';
+    private namespaceToFileMap: Map<string, string> = new Map(); // Para C# y Java
 
     constructor() {
         this.languageAnalyzers = new Map();
@@ -113,7 +114,8 @@ export class ProjectAnalyzer {
                         dependencies: analysis.dependencies || [],
                         exports: analysis.exports || [],
                         size: stats.size,
-                        extension: ext
+                        extension: ext,
+                        namespace: analysis.namespace
                     };
 
                     processedFiles.push(fileNode);
@@ -130,6 +132,14 @@ export class ProjectAnalyzer {
         const nodes: GraphNode[] = [];
         const edges: GraphEdge[] = [];
         const nodeMap = new Map<string, GraphNode>();
+
+        // Construir mapa de namespaces a archivos (para C# y Java)
+        this.namespaceToFileMap.clear();
+        for (const file of files) {
+            if (file.namespace) {
+                this.namespaceToFileMap.set(file.namespace, file.path);
+            }
+        }
 
         // Crear nodos
         for (const file of files) {
@@ -201,6 +211,7 @@ export class ProjectAnalyzer {
 
     private resolveDependencyPath(dependency: string, fromFile: string): string | null {
         const dir = path.dirname(fromFile);
+        const ext = path.extname(fromFile).substring(1).toLowerCase();
         
         // Skip built-in modules
         if (this.isBuiltInModule(dependency)) {
@@ -211,6 +222,25 @@ export class ProjectAnalyzer {
         if (dependency.includes('embedding.service')) {
             console.log(`[DEBUG] Resolving: "${dependency}" from "${fromFile}"`);
             console.log(`[DEBUG] Base dir: "${dir}"`);
+        }
+        
+        // 0. Para C# y Java: intentar resolver como namespace primero
+        if (ext === 'cs' || ext === 'java') {
+            // Buscar coincidencia exacta de namespace
+            if (this.namespaceToFileMap.has(dependency)) {
+                const resolvedFile = this.namespaceToFileMap.get(dependency);
+                if (resolvedFile) {
+                    return resolvedFile;
+                }
+            }
+            
+            // Buscar coincidencia parcial (para casos donde se importa un tipo específico)
+            // Por ejemplo: "Application.Snapshots.Order.OrderSnapshot" debería encontrar "Application.Snapshots.Order"
+            for (const [namespace, filePath] of this.namespaceToFileMap.entries()) {
+                if (dependency.startsWith(namespace + '.')) {
+                    return filePath;
+                }
+            }
         }
         
         // 1. Try TypeScript aliases first
@@ -286,6 +316,16 @@ export class ProjectAnalyzer {
             'vscode', 'react', 'vue', 'angular', '@types'
         ];
         
+        // C# built-in namespaces
+        const csharpBuiltIns = [
+            'System', 'Microsoft', 'Newtonsoft', 'AutoMapper', 'FluentValidation'
+        ];
+        
+        // Java built-in packages
+        const javaBuiltIns = [
+            'java', 'javax', 'org.springframework', 'org.apache', 'com.google'
+        ];
+        
         // Check if it's a built-in Node.js module
         if (builtInModules.includes(dependency)) {
             return true;
@@ -296,8 +336,23 @@ export class ProjectAnalyzer {
             return true;
         }
         
+        // Check C# built-in namespaces
+        if (csharpBuiltIns.some(ns => dependency === ns || dependency.startsWith(ns + '.'))) {
+            return true;
+        }
+        
+        // Check Java built-in packages
+        if (javaBuiltIns.some(pkg => dependency === pkg || dependency.startsWith(pkg + '.'))) {
+            return true;
+        }
+        
         // Check if it's an npm package (doesn't start with . or / and is a simple name without path separators)
+        // IMPORTANT: For C# and Java, namespaces use dots (.) not slashes, so we need to allow them through
         if (!dependency.startsWith('.') && !dependency.startsWith('/') && !dependency.startsWith('@')) {
+            // If it contains dots (.), it might be a C#/Java namespace, so allow it through
+            if (dependency.includes('.')) {
+                return false; // Let the namespace resolver handle it
+            }
             // If it's just a simple name without slashes, it's likely an npm package
             return !dependency.includes('/');
         }

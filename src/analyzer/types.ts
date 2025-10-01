@@ -7,6 +7,7 @@ export interface FileNode {
     exports: string[];
     size: number;
     extension: string;
+    namespace?: string; // Para C# y Java
 }
 
 export interface ProjectStructure {

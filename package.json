@@ -2,7 +2,7 @@
   "name": "mappath",
   "displayName": "MapPath - Analizador visual de dependencias",
   "description": "Analizador visual de dependencias y estructura de proyectos",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "engines": {
     "vscode": "^1.74.0"
   },
