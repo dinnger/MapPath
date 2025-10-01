@@ -14,6 +14,7 @@ export class ProjectAnalyzer {
     private gitignorePatterns: string[] = [];
     private projectRoot: string = '';
     private namespaceToFileMap: Map<string, string> = new Map(); // Para C# y Java
+    private classToFileMap: Map<string, string> = new Map(); // Mapa de clases/tipos a archivos
 
     constructor() {
         this.languageAnalyzers = new Map();
@@ -135,9 +136,24 @@ export class ProjectAnalyzer {
 
         // Construir mapa de namespaces a archivos (para C# y Java)
         this.namespaceToFileMap.clear();
+        this.classToFileMap.clear();
+        
         for (const file of files) {
             if (file.namespace) {
                 this.namespaceToFileMap.set(file.namespace, file.path);
+            }
+            
+            // Construir mapa de clases exportadas a archivos (para C#, Java, etc.)
+            if (file.exports && file.exports.length > 0) {
+                for (const exportedClass of file.exports) {
+                    this.classToFileMap.set(exportedClass, file.path);
+                    
+                    // También crear entrada con namespace completo
+                    if (file.namespace) {
+                        const fullName = `${file.namespace}.${exportedClass}`;
+                        this.classToFileMap.set(fullName, file.path);
+                    }
+                }
             }
         }
 
@@ -213,8 +229,9 @@ export class ProjectAnalyzer {
         const dir = path.dirname(fromFile);
         const ext = path.extname(fromFile).substring(1).toLowerCase();
         
-        // Skip built-in modules
-        if (this.isBuiltInModule(dependency)) {
+        // Para C# y Java: NO filtrar módulos built-in aún, primero intentar resolver como clase/namespace local
+        // Solo filtrar si NO es un archivo de C# o Java
+        if (ext !== 'cs' && ext !== 'java' && this.isBuiltInModule(dependency)) {
             return null;
         }
         
@@ -224,8 +241,16 @@ export class ProjectAnalyzer {
             console.log(`[DEBUG] Base dir: "${dir}"`);
         }
         
-        // 0. Para C# y Java: intentar resolver como namespace primero
+        // 0. Para C# y Java: intentar resolver como namespace o clase
         if (ext === 'cs' || ext === 'java') {
+            // Primero buscar como clase/tipo (más específico)
+            if (this.classToFileMap.has(dependency)) {
+                const resolvedFile = this.classToFileMap.get(dependency);
+                if (resolvedFile) {
+                    return resolvedFile;
+                }
+            }
+            
             // Buscar coincidencia exacta de namespace
             if (this.namespaceToFileMap.has(dependency)) {
                 const resolvedFile = this.namespaceToFileMap.get(dependency);
@@ -240,6 +265,11 @@ export class ProjectAnalyzer {
                 if (dependency.startsWith(namespace + '.')) {
                     return filePath;
                 }
+            }
+            
+            // Si no se encontró localmente, verificar si es un módulo built-in de C#/Java
+            if (this.isBuiltInModule(dependency)) {
+                return null;
             }
         }
         

@@ -36,7 +36,7 @@ export interface GraphNode {
 export interface GraphEdge {
     from: string;
     to: string;
-    type: 'import' | 'require' | 'include' | 'using';
+    type: 'import' | 'require' | 'include' | 'using' | 'type-reference';
     weight?: number;
 }
 

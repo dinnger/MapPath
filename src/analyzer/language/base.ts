@@ -17,7 +17,7 @@ export interface AnalysisResult {
 
 export interface ImportInfo {
     module: string;
-    type: 'import' | 'require' | 'include' | 'using';
+    type: 'import' | 'require' | 'include' | 'using' | 'type-reference';
     line: number;
     isRelative: boolean;
 }
