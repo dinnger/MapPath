@@ -2,7 +2,7 @@
   "name": "mappath",
   "displayName": "MapPath - Analizador visual de dependencias",
   "description": "Analizador visual de dependencias y estructura de proyectos",
-  "version": "2.0.4",
+  "version": "2.0.9",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -18,6 +18,11 @@
       {
         "command": "mappath.analyzeProject",
         "title": "Analizar proyecto",
+        "category": "MapPath"
+      },
+      {
+        "command": "mappath.analyzeProjectMermaid",
+        "title": "Analizar proyecto (Mermaid)",
         "category": "MapPath"
       }
     ]

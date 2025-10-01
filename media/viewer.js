@@ -507,7 +507,7 @@ class DependencyViewer {
                     <h4>${fileData.name}</h4>
                     <p><strong>Lenguaje:</strong> ${fileData.language || 'Desconocido'}</p>
                     <p><strong>Tamaño:</strong> ${this.formatFileSize(fileData.size)}</p>
-                    <p><strong>Ruta:</strong> ${this.truncatePath(fileData.path)}</p>
+                    <p><strong>Ruta:</strong> ${fileData.path}</p>
                     ${dependencyList ? `
                         <p><strong>Dependencias:</strong></p>
                         <ul class="dependency-list">${dependencyList}</ul>
@@ -529,10 +529,7 @@ class DependencyViewer {
         }
     }
 
-    truncatePath(str) {
-      if (typeof str !== 'string') return '';
-      return str.length <= 50 ? str : `...${str.slice(-50)}`;
-    }
+
 
     formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
